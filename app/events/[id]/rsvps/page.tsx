@@ -45,7 +45,7 @@ export default async function AdminEventRSVPsPage({
     .select("user_id, status, attending, profiles:profiles(full_name)")
     .eq("event_id", id);
 
-  const normalized = (rows ?? []).map((r: any) => {
+  const normalizedBase = (rows ?? []).map((r: any) => {
     const s =
       typeof r.status === "string"
         ? r.status
@@ -57,12 +57,9 @@ export default async function AdminEventRSVPsPage({
     return {
       user_id: r.user_id,
       name: r?.profiles?.full_name ?? "Member",
-      rsvpStatus: s as "yes" | "no" | "unknown",
+      rsvp_status: s as "yes" | "no" | "unknown",
     };
   });
-
-  const yes = normalized.filter((r) => r.rsvpStatus === "yes");
-  const no = normalized.filter((r) => r.rsvpStatus === "no");
 
   // Attendance overrides (what makes buttons stay pressed)
   const { data: overrides } = await supabase
@@ -76,6 +73,14 @@ export default async function AdminEventRSVPsPage({
     if (s === "attended") initialOverrides[r.user_id] = "attended";
     if (s === "no_show") initialOverrides[r.user_id] = "no_show";
   });
+
+  const normalized = normalizedBase.map((r) => ({
+    ...r,
+    attendance_override: initialOverrides[r.user_id] ?? null,
+  }));
+
+  const yes = normalized.filter((r) => r.rsvp_status === "yes");
+  const no = normalized.filter((r) => r.rsvp_status === "no");
 
   const isPastEvent = ev?.starts_at ? new Date(ev.starts_at) < new Date() : false;
 
@@ -108,7 +113,7 @@ export default async function AdminEventRSVPsPage({
               </summary>
               <pre className="mt-3 whitespace-pre-wrap rounded-2xl bg-rose-50 p-4 text-xs text-gray-800">
 name,status
-{normalized.map((r) => `${JSON.stringify(r.name)},${r.rsvpStatus}`).join("\n")}
+{normalized.map((r) => `${JSON.stringify(r.name)},${r.rsvp_status}`).join("\n")}
               </pre>
             </details>
           </div>
@@ -130,7 +135,6 @@ name,status
             <AdminAttendanceControls
               eventId={id}
               rows={normalized}
-              initialOverrides={initialOverrides}
             />
           </div>
         ) : (
