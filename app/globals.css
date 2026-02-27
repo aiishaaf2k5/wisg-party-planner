@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -12,15 +12,103 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
 }
+
+@keyframes riseIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes orbFloatA {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(28px, -18px, 0) scale(1.05);
+  }
+}
+
+@keyframes orbFloatB {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-20px, 22px, 0) scale(0.96);
+  }
+}
+
+@keyframes orbFloatC {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(12px, -26px, 0) scale(1.04);
+  }
+}
+
+.animate-rise-in {
+  animation: riseIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(68px);
+  opacity: 0.68;
+  will-change: transform;
+}
+
+.hero-orb-a {
+  left: -8%;
+  top: 7%;
+  height: 320px;
+  width: 320px;
+  background: radial-gradient(circle at 35% 35%, #fecdd3 0%, #fb7185 90%);
+  animation: orbFloatA 11s ease-in-out infinite;
+}
+
+.hero-orb-b {
+  right: -9%;
+  top: 14%;
+  height: 390px;
+  width: 390px;
+  background: radial-gradient(circle at 35% 35%, #f9a8d4 0%, #ec4899 90%);
+  animation: orbFloatB 13s ease-in-out infinite;
+}
+
+.hero-orb-c {
+  bottom: -11%;
+  left: 32%;
+  height: 350px;
+  width: 350px;
+  background: radial-gradient(circle at 35% 35%, #f5d0fe 0%, #d946ef 90%);
+  animation: orbFloatC 12s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in,
+  .hero-orb-a,
+  .hero-orb-b,
+  .hero-orb-c {
+    animation: none !important;
+  }
+}
+
