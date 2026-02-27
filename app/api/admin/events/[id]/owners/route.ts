@@ -50,9 +50,13 @@ export async function POST(
     }
 
     const body = await req.json().catch(() => null);
-    const rawOwnerIds = Array.isArray(body?.ownerIds) ? body.ownerIds : [];
-    const ownerIds = Array.from(
-      new Set(rawOwnerIds.map((v: unknown) => String(v ?? "").trim()).filter(Boolean))
+    const rawOwnerIds: unknown[] = Array.isArray(body?.ownerIds) ? body.ownerIds : [];
+    const ownerIds: string[] = Array.from(
+      new Set(
+        rawOwnerIds
+          .map((v) => String(v ?? "").trim())
+          .filter((v): v is string => v.length > 0)
+      )
     );
 
     if (ownerIds.length !== 2) {
