@@ -3,9 +3,30 @@
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
+type RsvpRow = {
+  user_id: string;
+  attending: boolean | null;
+};
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+};
+
+type AttendanceFinalRow = {
+  user_id: string;
+  showed_up: boolean | null;
+};
+
+type UiRow = {
+  user_id: string;
+  full_name: string;
+  showed_up: boolean;
+};
+
 export default function AttendanceFinalize({ eventId }: { eventId: string }) {
   const supabase = createSupabaseBrowser();
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<UiRow[]>([]);
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -15,21 +36,27 @@ export default function AttendanceFinalize({ eventId }: { eventId: string }) {
       .select("user_id, attending")
       .eq("event_id", eventId);
 
-    const yesIds = (rsvps.data ?? []).filter((r) => r.attending).map((r) => r.user_id);
+    const yesIds = ((rsvps.data ?? []) as RsvpRow[])
+      .filter((r: RsvpRow) => Boolean(r.attending))
+      .map((r: RsvpRow) => r.user_id);
 
     // profiles names
     const prof = await supabase.from("profiles").select("id, full_name").in("id", yesIds);
-    const nameMap = new Map((prof.data ?? []).map((p) => [p.id, p.full_name]));
+    const nameMap = new Map(
+      ((prof.data ?? []) as ProfileRow[]).map((p: ProfileRow) => [p.id, p.full_name])
+    );
 
     // existing finalized
     const fin = await supabase.from("attendance_final").select("*").eq("event_id", eventId);
 
-    const finMap = new Map((fin.data ?? []).map((f) => [f.user_id, f.showed_up]));
+    const finMap = new Map(
+      ((fin.data ?? []) as AttendanceFinalRow[]).map((f: AttendanceFinalRow) => [f.user_id, f.showed_up])
+    );
 
-    const list = yesIds.map((id) => ({
+    const list: UiRow[] = yesIds.map((id: string) => ({
       user_id: id,
       full_name: nameMap.get(id) ?? "Unknown",
-      showed_up: finMap.has(id) ? finMap.get(id) : true,
+      showed_up: finMap.has(id) ? Boolean(finMap.get(id)) : true,
     }));
 
     setRows(list);
