@@ -5,7 +5,6 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   serverExternalPackages: [
     "@resvg/resvg-js",
-    "@resvg/resvg-js-win32-x64-msvc",
   ],
   images: {
     remotePatterns: [
