@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
@@ -9,18 +8,26 @@ type Mode = "member" | "admin";
 
 export default function LoginPage() {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
-  const searchParams = useSearchParams();
 
-  const rawNext = (searchParams.get("next") ?? "").trim();
-  const safeNext = rawNext.startsWith("/") ? rawNext : "/";
-  const isAdminInviteFlow = safeNext.startsWith("/admin-invite");
+  const [safeNext, setSafeNext] = useState("/");
+  const [isAdminInviteFlow, setIsAdminInviteFlow] = useState(false);
 
-  const [mode, setMode] = useState<Mode>(isAdminInviteFlow ? "admin" : "member");
+  const [mode, setMode] = useState<Mode>("member");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    const rawNext =
+      typeof window !== "undefined"
+        ? (new URLSearchParams(window.location.search).get("next") ?? "").trim()
+        : "";
+    const next = rawNext.startsWith("/") ? rawNext : "/";
+    setSafeNext(next);
+    setIsAdminInviteFlow(next.startsWith("/admin-invite"));
+  }, []);
 
   useEffect(() => {
     if (isAdminInviteFlow) setMode("admin");

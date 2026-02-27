@@ -10,12 +10,14 @@ const FONT_URL_FALLBACK = "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTcv
 type FlyerFont = {
   name: string;
   data: ArrayBuffer;
-  weight: number;
+  weight: 400 | 800;
   style: "normal" | "italic";
 };
 
-function toArrayBuffer(buf: Buffer) {
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+function toArrayBuffer(buf: Buffer): ArrayBuffer {
+  const out = new Uint8Array(buf.length);
+  out.set(buf);
+  return out.buffer;
 }
 
 async function loadLocalFont(paths: string[]) {
@@ -107,16 +109,6 @@ async function getResvgCtor() {
     if (m?.Resvg) return m.Resvg;
   } catch {
     // fallback below
-  }
-
-  // Last fallback: explicit Windows package load to force native binary init.
-  try {
-    const req = Function("return require")() as (id: string) => any;
-    req("@resvg/resvg-js-win32-x64-msvc");
-    const m = req("@resvg/resvg-js");
-    if (m?.Resvg) return m.Resvg;
-  } catch {
-    // fall through
   }
 
   throw new Error(

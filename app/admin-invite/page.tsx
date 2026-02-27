@@ -2,18 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type Status = "idle" | "needsLogin" | "accepting" | "done" | "error";
 
 export default function AdminInvitePage() {
-  const sp = useSearchParams();
-  const token = sp.get("token") ?? "";
   const supabase = useMemo(() => createSupabaseBrowser(), []);
 
+  const [token, setToken] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [msg, setMsg] = useState("Checking your invite...");
+
+  useEffect(() => {
+    const t =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("token") ?? ""
+        : "";
+    setToken(t);
+  }, []);
 
   useEffect(() => {
     (async () => {

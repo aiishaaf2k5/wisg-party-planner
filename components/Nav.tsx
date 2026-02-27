@@ -9,8 +9,8 @@ export default function Nav() {
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    supabase.auth.getUser().then((res: any) => setEmail(res?.data?.user?.email ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e: any, s: any) => {
       setEmail(s?.user?.email ?? null);
     });
     return () => sub.subscription.unsubscribe();

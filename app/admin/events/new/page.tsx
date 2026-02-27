@@ -4,9 +4,25 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import LocationAutocompleteInput from "@/components/LocationAutocompleteInput";
-import { useSearchParams } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 type AdminRow = { id: string; full_name: string };
+
+type PrefillState = {
+  eventId: string;
+  theme: string;
+  startsAt: string;
+  locationText: string;
+  dressCode: string;
+  note: string;
+  owner1: string;
+  owner2: string;
+  dishesRaw: string;
+  generatedFlyerPngPath: string;
+  generatedFlyerPdfPath: string;
+  generatedFlyerTemplate: string;
+};
 
 function normalizeDishName(v: string) {
   return v.trim().replace(/\s+/g, " ");
@@ -14,20 +30,22 @@ function normalizeDishName(v: string) {
 
 export default function NewEventPage() {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
-  const searchParams = useSearchParams();
-  const draftEventId = (searchParams.get("eventId") ?? "").trim();
-  const isDraftMode = !!draftEventId;
-  const prefillTheme = (searchParams.get("theme") ?? "").trim();
-  const prefillStartsAt = (searchParams.get("startsAt") ?? "").trim();
-  const prefillLocationText = (searchParams.get("locationText") ?? "").trim();
-  const prefillDressCode = (searchParams.get("dressCode") ?? "").trim();
-  const prefillNote = (searchParams.get("note") ?? "").trim();
-  const prefillOwner1 = (searchParams.get("owner1") ?? "").trim();
-  const prefillOwner2 = (searchParams.get("owner2") ?? "").trim();
-  const prefillDishesRaw = (searchParams.get("dishes") ?? "").trim();
-  const prefillGeneratedFlyerPngPath = (searchParams.get("generatedFlyerPngPath") ?? "").trim();
-  const prefillGeneratedFlyerPdfPath = (searchParams.get("generatedFlyerPdfPath") ?? "").trim();
-  const prefillGeneratedFlyerTemplate = (searchParams.get("generatedFlyerTemplate") ?? "").trim();
+
+  const [prefill, setPrefill] = useState<PrefillState>({
+    eventId: "",
+    theme: "",
+    startsAt: "",
+    locationText: "",
+    dressCode: "",
+    note: "",
+    owner1: "",
+    owner2: "",
+    dishesRaw: "",
+    generatedFlyerPngPath: "",
+    generatedFlyerPdfPath: "",
+    generatedFlyerTemplate: "",
+  });
+  const [prefillApplied, setPrefillApplied] = useState(false);
 
   function parsePrefillDishes(raw: string) {
     if (!raw) return null;
@@ -43,28 +61,69 @@ export default function NewEventPage() {
     }
   }
 
-  const prefillDishes = parsePrefillDishes(prefillDishesRaw);
+  const draftEventId = prefill.eventId;
+  const isDraftMode = !!draftEventId;
+  const prefillOwner1 = prefill.owner1;
+  const prefillOwner2 = prefill.owner2;
+  const prefillGeneratedFlyerPngPath = prefill.generatedFlyerPngPath;
+  const prefillGeneratedFlyerPdfPath = prefill.generatedFlyerPdfPath;
+  const prefillGeneratedFlyerTemplate = prefill.generatedFlyerTemplate;
 
-  const [theme, setTheme] = useState(prefillTheme);
-  const [startsAt, setStartsAt] = useState(prefillStartsAt);
-  const [locationText, setLocationText] = useState(prefillLocationText);
-  const [dressCode, setDressCode] = useState(prefillDressCode);
-  const [note, setNote] = useState(prefillNote);
+  const [theme, setTheme] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [locationText, setLocationText] = useState("");
+  const [dressCode, setDressCode] = useState("");
+  const [note, setNote] = useState("");
 
   const [admins, setAdmins] = useState<AdminRow[]>([]);
-  const [owner1, setOwner1] = useState(prefillOwner1);
-  const [owner2, setOwner2] = useState(prefillOwner2);
+  const [owner1, setOwner1] = useState("");
+  const [owner2, setOwner2] = useState("");
 
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
   const [isFlyerDragOver, setIsFlyerDragOver] = useState(false);
 
   // âœ… Dish list
   const [dishInput, setDishInput] = useState("");
-  const [dishes, setDishes] = useState<string[]>(
-    prefillDishes ?? ["Biryani", "Kebab", "Samosa", "Drinks", "Dessert"]
-  );
+  const [dishes, setDishes] = useState<string[]>(["Biryani", "Kebab", "Samosa", "Drinks", "Dessert"]);
 
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const sp =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    if (!sp) return;
+
+    setPrefill({
+      eventId: (sp.get("eventId") ?? "").trim(),
+      theme: (sp.get("theme") ?? "").trim(),
+      startsAt: (sp.get("startsAt") ?? "").trim(),
+      locationText: (sp.get("locationText") ?? "").trim(),
+      dressCode: (sp.get("dressCode") ?? "").trim(),
+      note: (sp.get("note") ?? "").trim(),
+      owner1: (sp.get("owner1") ?? "").trim(),
+      owner2: (sp.get("owner2") ?? "").trim(),
+      dishesRaw: (sp.get("dishes") ?? "").trim(),
+      generatedFlyerPngPath: (sp.get("generatedFlyerPngPath") ?? "").trim(),
+      generatedFlyerPdfPath: (sp.get("generatedFlyerPdfPath") ?? "").trim(),
+      generatedFlyerTemplate: (sp.get("generatedFlyerTemplate") ?? "").trim(),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (prefillApplied) return;
+
+    const prefillDishes = parsePrefillDishes(prefill.dishesRaw);
+    if (prefill.theme) setTheme(prefill.theme);
+    if (prefill.startsAt) setStartsAt(prefill.startsAt);
+    if (prefill.locationText) setLocationText(prefill.locationText);
+    if (prefill.dressCode) setDressCode(prefill.dressCode);
+    if (prefill.note) setNote(prefill.note);
+    if (prefill.owner1) setOwner1(prefill.owner1);
+    if (prefill.owner2) setOwner2(prefill.owner2);
+    if (prefillDishes) setDishes(prefillDishes);
+
+    setPrefillApplied(true);
+  }, [prefill, prefillApplied]);
 
   function isAllowedFlyerFile(file: File) {
     return file.type.startsWith("image/") || file.type === "application/pdf";

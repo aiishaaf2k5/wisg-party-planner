@@ -5,12 +5,20 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 const CATEGORIES = ["Appetizer", "Main", "Dessert", "Drinks", "Other"];
 
+type DishSignupRow = {
+  event_id: string;
+  user_id: string;
+  category: string;
+  dish_name: string;
+  updated_at?: string | null;
+};
+
 export default function DishSignup({ eventId }: { eventId: string }) {
   const supabase = createSupabaseBrowser();
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [dishName, setDishName] = useState("");
-  const [all, setAll] = useState<any[]>([]);
-  const [mine, setMine] = useState<any | null>(null);
+  const [all, setAll] = useState<DishSignupRow[]>([]);
+  const [mine, setMine] = useState<DishSignupRow | null>(null);
   const [saving, setSaving] = useState(false);
 
   const counts = useMemo(() => {
@@ -32,9 +40,10 @@ export default function DishSignup({ eventId }: { eventId: string }) {
     if (!user.user) return;
 
     const rows = await supabase.from("dish_signups").select("*").eq("event_id", eventId);
-    setAll(rows.data ?? []);
+    const list = (rows.data ?? []) as DishSignupRow[];
+    setAll(list);
 
-    const me = (rows.data ?? []).find((r) => r.user_id === user.user.id) ?? null;
+    const me = list.find((r: DishSignupRow) => r.user_id === user.user.id) ?? null;
     setMine(me);
     if (me) {
       setCategory(me.category);

@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
+type RsvpLiteRow = {
+  attending: boolean | null;
+};
+
 export default function RSVP({ eventId }: { eventId: string }) {
   const supabase = createSupabaseBrowser();
   const [attending, setAttending] = useState<boolean | null>(null);
@@ -27,8 +31,9 @@ export default function RSVP({ eventId }: { eventId: string }) {
     }
 
     const all = await supabase.from("rsvps").select("attending").eq("event_id", eventId);
-    const yes = (all.data ?? []).filter((r) => r.attending).length;
-    const no = (all.data ?? []).filter((r) => !r.attending).length;
+    const allRows = (all.data ?? []) as RsvpLiteRow[];
+    const yes = allRows.filter((r: RsvpLiteRow) => Boolean(r.attending)).length;
+    const no = allRows.filter((r: RsvpLiteRow) => !r.attending).length;
     setCounts({ yes, no });
   }
 

@@ -16,6 +16,13 @@ type LiveState = {
   comingMembers: string[];
 };
 
+type RsvpLiveRow = {
+  user_id: string;
+  status?: string | null;
+  attending?: boolean | null;
+  profiles?: unknown;
+};
+
 const Ctx = createContext<LiveState | null>(null);
 
 function normalizeName(value: unknown) {
@@ -59,9 +66,9 @@ export function EventLiveComingProvider({
       .eq("event_id", eventId)
       .or("status.eq.yes,attending.eq.true");
 
-    const rows = yesRows ?? [];
-    const names = rows
-      .map((r) => extractName((r as { profiles?: unknown }).profiles))
+    const rows = (yesRows ?? []) as RsvpLiveRow[];
+    const names: string[] = rows
+      .map((r: RsvpLiveRow) => extractName(r.profiles))
       .filter(Boolean);
 
     const uniqueSorted = Array.from(new Set(names)).sort((a, b) =>
