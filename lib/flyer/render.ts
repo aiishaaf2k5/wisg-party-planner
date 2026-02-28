@@ -46,6 +46,11 @@ async function loadInterFallback() {
 async function loadFonts(): Promise<FlyerFont[]> {
   const body =
     (await loadLocalFont([
+      "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+      "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+      "/System/Library/Fonts/Supplemental/Arial.ttf",
+      "/Library/Fonts/Arial.ttf",
       "C:\\Windows\\Fonts\\segoeui.ttf",
       "C:\\Windows\\Fonts\\arial.ttf",
     ])) ?? (await loadInterFallback());
@@ -53,6 +58,11 @@ async function loadFonts(): Promise<FlyerFont[]> {
 
   const display =
     (await loadLocalFont([
+      "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+      "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+      "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+      "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+      "/Library/Fonts/Arial Bold.ttf",
       "C:\\Windows\\Fonts\\arialbd.ttf",
       "C:\\Windows\\Fonts\\georgiab.ttf",
       "C:\\Windows\\Fonts\\timesbd.ttf",
@@ -60,6 +70,11 @@ async function loadFonts(): Promise<FlyerFont[]> {
 
   const script =
     (await loadLocalFont([
+      "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
+      "/usr/share/fonts/truetype/liberation2/LiberationSans-Italic.ttf",
+      "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
+      "/System/Library/Fonts/Supplemental/Arial Italic.ttf",
+      "/Library/Fonts/Arial Italic.ttf",
       "C:\\Windows\\Fonts\\segoesc.ttf",
       "C:\\Windows\\Fonts\\gabriola.ttf",
       "C:\\Windows\\Fonts\\georgiai.ttf",
