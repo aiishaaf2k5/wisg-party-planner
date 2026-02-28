@@ -2,6 +2,7 @@ import "./globals.css";
 import TopBar from "@/components/TopBar";
 import type { Metadata, Viewport } from "next";
 import PwaRegister from "@/components/PwaRegister";
+import InstallAppPrompt from "@/components/InstallAppPrompt";
 
 export const metadata: Metadata = {
   title: "IWSG Event Management",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen bg-gradient-to-b from-rose-50 via-pink-50 to-orange-50 text-gray-900">
         <PwaRegister />
+        <InstallAppPrompt />
         <TopBar />
         {children}
       </body>

@@ -1,6 +1,7 @@
 {
   "name": "IWSG Event Management",
   "short_name": "IWSG",
+  "id": "/",
   "description": "Intercultural Women's Support Group event planning app.",
   "start_url": "/",
   "scope": "/",
@@ -8,6 +9,7 @@
   "orientation": "portrait",
   "background_color": "#fff7fb",
   "theme_color": "#ec4899",
+  "prefer_related_applications": false,
   "lang": "en",
   "icons": [
     {
