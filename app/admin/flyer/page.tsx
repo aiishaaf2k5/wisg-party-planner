@@ -94,17 +94,16 @@ export default async function AdminFlyerPage({
     return (
       <div className="min-h-screen bg-gradient-to-b from-rose-50 via-pink-50 to-orange-50">
         <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
-          <div className="flex items-center justify-between gap-4">
+          <div className="relative flex items-center justify-center gap-4">
             <Link
               href={backHref}
-              className="group inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-white px-6 py-3 text-base font-semibold text-rose-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-50 hover:shadow"
+              className="group absolute left-0 inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-white px-6 py-3 text-base font-semibold text-rose-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-50 hover:shadow"
             >
               <span className="transition group-hover:-translate-x-0.5">&larr;</span>
               <span>Back to Event Setup</span>
             </Link>
 
             <div className="text-3xl font-semibold text-gray-900">AI Flyer Generator</div>
-            <div />
           </div>
 
           <div className="rounded-3xl border border-rose-100 bg-white/85 p-6 shadow ring-1 ring-rose-100 backdrop-blur">
@@ -137,11 +136,11 @@ export default async function AdminFlyerPage({
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-pink-50 to-orange-50">
       <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
-        <div className="flex items-center justify-between gap-4">
+        <div className="relative flex items-center justify-center gap-4">
           {isEditReturnFlow ? (
             <Link
               href={safeReturnTo!}
-              className="group inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-sm font-semibold text-rose-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-50 hover:shadow"
+              className="group absolute left-0 inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-sm font-semibold text-rose-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-50 hover:shadow"
             >
               <span className="transition group-hover:-translate-x-0.5">&larr;</span>
               <span>Back to Edit Event</span>
@@ -149,7 +148,7 @@ export default async function AdminFlyerPage({
           ) : (
             <Link
               href="/"
-              className="group flex items-center gap-2 text-[15px] font-medium text-gray-800 transition"
+              className="group absolute left-0 flex items-center gap-2 text-[15px] font-medium text-gray-800 transition"
             >
               <span className="transition group-hover:-translate-x-0.5">&larr;</span>
               <span className="group-hover:underline">Back to Home</span>
@@ -157,7 +156,6 @@ export default async function AdminFlyerPage({
           )}
 
           <div className="text-3xl font-semibold text-gray-900">AI Flyer Generator</div>
-          <div />
         </div>
 
         {list.length === 0 ? (
