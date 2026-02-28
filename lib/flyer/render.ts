@@ -46,6 +46,9 @@ async function loadInterFallback() {
 async function loadFonts(): Promise<FlyerFont[]> {
   const body =
     (await loadLocalFont([
+      join(process.cwd(), "public", "fonts", "inter-400-normal.woff"),
+      join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-400-normal.woff"),
+      join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-ext-400-normal.woff"),
       "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
       "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
       "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
@@ -58,6 +61,9 @@ async function loadFonts(): Promise<FlyerFont[]> {
 
   const display =
     (await loadLocalFont([
+      join(process.cwd(), "public", "fonts", "inter-800-normal.woff"),
+      join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-800-normal.woff"),
+      join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-ext-800-normal.woff"),
       "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
       "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
       "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
@@ -70,6 +76,9 @@ async function loadFonts(): Promise<FlyerFont[]> {
 
   const script =
     (await loadLocalFont([
+      join(process.cwd(), "public", "fonts", "inter-400-italic.woff"),
+      join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-400-italic.woff"),
+      join(process.cwd(), "node_modules", "@fontsource", "inter", "files", "inter-latin-ext-400-italic.woff"),
       "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
       "/usr/share/fonts/truetype/liberation2/LiberationSans-Italic.ttf",
       "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
