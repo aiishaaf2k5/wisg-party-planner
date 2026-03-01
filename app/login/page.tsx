@@ -61,7 +61,7 @@ export default function LoginPage() {
     const callback =
       typeof window !== "undefined"
         ? isNativeApp
-          ? `com.iwsg.app://auth/callback?next=${encodeURIComponent(
+          ? `${window.location.origin}/auth/native-bridge?next=${encodeURIComponent(
               safeNext
             )}&mode=${encodeURIComponent(selectedMode)}`
           : `${window.location.origin}/auth/callback?next=${encodeURIComponent(
