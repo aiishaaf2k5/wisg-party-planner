@@ -203,9 +203,9 @@ export default function LoginPage() {
             </div>
 
             <p className="mt-4 text-center text-base text-pink-800/80">
-              {isAdminInviteFlow
-                ? "Sign in with your admin email to continue accepting the invite."
-                : "Sign in with your email link to access your events."}
+                {isAdminInviteFlow
+                  ? "Sign in with your admin email to continue accepting the invite."
+                  : "Sign in with your email code to access your events."}
             </p>
 
             <div className="mt-7 rounded-full border border-pink-200 bg-white/85 px-3 py-3 shadow-[0_10px_30px_rgba(236,72,153,0.14)] ring-1 ring-pink-100">
@@ -253,8 +253,8 @@ export default function LoginPage() {
                 {isAdminInviteFlow
                   ? "Use the same email that received the admin invite."
                   : mode === "member"
-                  ? "Enter your email and we will send a secure sign-in link."
-                  : "Admins: enter your admin email to sign in."}
+                  ? "Enter your email and we will send a secure sign-in code."
+                  : "Admins: enter your admin email to get a sign-in code."}
               </div>
 
               <div className="mt-5 space-y-2">
@@ -284,8 +284,8 @@ export default function LoginPage() {
                   : cooldown > 0
                   ? `Wait ${cooldown}s`
                   : isAdminInviteFlow
-                  ? "Send Admin Sign-In Link"
-                  : "Send Sign-In Link"}
+                  ? "Send Admin Code"
+                  : "Send Sign-In Code"}
               </button>
 
               {needsCode && (
