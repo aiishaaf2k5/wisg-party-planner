@@ -92,7 +92,11 @@ export default function LoginPage() {
         return;
       }
 
-      const idToken = String(nativeResult.credential?.idToken ?? "").trim();
+      let idToken = String(nativeResult.credential?.idToken ?? "").trim();
+      if (!idToken) {
+        const idRes = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
+        idToken = String(idRes?.token ?? "").trim();
+      }
       if (!idToken) {
         setBusy(false);
         setErr("Google sign-in did not return an ID token.");
