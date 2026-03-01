@@ -13,14 +13,9 @@ export default function LoginPage() {
   const [isAdminInviteFlow, setIsAdminInviteFlow] = useState(false);
 
   const [mode, setMode] = useState<Mode>("member");
-  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  const [needsCode, setNeedsCode] = useState(false);
-  const [pendingEmail, setPendingEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
 
   useEffect(() => {
     const rawNext =
@@ -42,76 +37,6 @@ export default function LoginPage() {
   useEffect(() => {
     if (isAdminInviteFlow) setMode("admin");
   }, [isAdminInviteFlow]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((c) => c - 1), 1000);
-    return () => clearInterval(t);
-  }, [cooldown]);
-
-  async function sendMagicLink() {
-    setErr(null);
-    setMsg(null);
-
-    const clean = email.trim().toLowerCase();
-    if (!clean) {
-      setErr("Please enter your email.");
-      return;
-    }
-
-    if (busy || cooldown > 0) return;
-
-    const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
-    const inviteToken =
-      typeof window !== "undefined" && isAdminInviteFlow
-        ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
-        : "";
-    const roleCheckRes = await fetch("/api/auth/login-role-check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: clean, mode: selectedMode, inviteToken }),
-    });
-    const roleCheckJson = await roleCheckRes.json().catch(() => ({}));
-    if (!roleCheckRes.ok) {
-      setErr(roleCheckJson?.error ?? "Please use the correct login type for this account.");
-      return;
-    }
-
-    setBusy(true);
-    setCooldown(30);
-
-    const isNativeApp =
-      typeof window !== "undefined" &&
-      !!(window as any).Capacitor?.isNativePlatform?.();
-    const redirectTo =
-      !isNativeApp && typeof window !== "undefined"
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
-        : undefined;
-    const otpOptions: { emailRedirectTo?: string } = {};
-    if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: clean,
-      options: otpOptions,
-    });
-
-    setBusy(false);
-
-    if (error) {
-      setErr(error.message);
-      setCooldown(0);
-      return;
-    }
-
-    setPendingEmail(clean);
-    setNeedsCode(true);
-    setOtpCode("");
-    setMsg(
-      isAdminInviteFlow
-        ? "Email sent. Paste the one-time code from your email to continue admin setup."
-        : "Email sent. Paste the one-time code from your email to sign in."
-    );
-  }
 
   async function continueWithGoogle() {
     setErr(null);
@@ -155,59 +80,6 @@ export default function LoginPage() {
     if (isNativeApp) {
       setMsg("Continue sign-in in the browser window, then return to the app.");
     }
-  }
-
-  async function verifyCode() {
-    setErr(null);
-    setMsg(null);
-
-    const clean = pendingEmail.trim().toLowerCase();
-    if (!clean) {
-      setErr("Please enter your email first.");
-      return;
-    }
-
-    const code = otpCode.trim();
-    if (code.length < 6) {
-      setErr("Please enter the code from your email.");
-      return;
-    }
-
-    if (busy) return;
-
-    const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
-    const inviteToken =
-      typeof window !== "undefined" && isAdminInviteFlow
-        ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
-        : "";
-
-    const roleCheckRes = await fetch("/api/auth/login-role-check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: clean, mode: selectedMode, inviteToken }),
-    });
-    const roleCheckJson = await roleCheckRes.json().catch(() => ({}));
-    if (!roleCheckRes.ok) {
-      setErr(roleCheckJson?.error ?? "Please use the correct login type for this account.");
-      return;
-    }
-
-    setBusy(true);
-
-    const { error } = await supabase.auth.verifyOtp({
-      email: clean,
-      token: code,
-      type: "email",
-    });
-
-    setBusy(false);
-
-    if (error) {
-      setErr(error.message);
-      return;
-    }
-
-    window.location.href = safeNext;
   }
 
   return (
@@ -255,8 +127,8 @@ export default function LoginPage() {
 
             <p className="mt-4 text-center text-base text-pink-800/80">
                 {isAdminInviteFlow
-                  ? "Sign in with your admin email to continue accepting the invite."
-                  : "Sign in with your email code to access your events."}
+                  ? "Continue with Google to accept your admin invite."
+                  : "Continue with Google to access your events."}
             </p>
 
             <div className="mt-7 rounded-full border border-pink-200 bg-white/85 px-3 py-3 shadow-[0_10px_30px_rgba(236,72,153,0.14)] ring-1 ring-pink-100">
@@ -302,10 +174,10 @@ export default function LoginPage() {
               </div>
               <div className="mt-1 text-center text-sm text-gray-600">
                 {isAdminInviteFlow
-                  ? "Use the same email that received the admin invite."
+                  ? "Use the same Google account that received the admin invite."
                   : mode === "member"
-                  ? "Enter your email and we will send a secure sign-in code."
-                  : "Admins: enter your admin email to get a sign-in code."}
+                  ? "Members: continue using your Google account."
+                  : "Admins: continue using your admin Google account."}
               </div>
 
               <div className="mt-5 space-y-2">
@@ -321,72 +193,7 @@ export default function LoginPage() {
                 >
                   Continue with Google
                 </button>
-                <div className="text-center text-xs text-gray-600">
-                  Recommended to avoid email rate-limit issues.
-                </div>
               </div>
-
-              <div className="mt-5 h-px w-full bg-pink-100" />
-
-              <div className="mt-5 space-y-2">
-                <label className="text-sm font-semibold text-gray-900">Email</label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full rounded-2xl border border-pink-300 bg-pink-50/70 px-4 py-3 text-base text-gray-900 outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-200"
-                  autoComplete="email"
-                  inputMode="email"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={sendMagicLink}
-                disabled={busy || cooldown > 0}
-                className={[
-                  "mt-5 w-full rounded-2xl px-6 py-4 text-center text-base font-semibold text-white transition",
-                  "bg-gradient-to-r from-pink-500 via-fuchsia-500 to-pink-600 shadow-[0_16px_42px_rgba(236,72,153,0.34)] hover:scale-[1.01] hover:opacity-95",
-                  busy || cooldown > 0 ? "cursor-not-allowed opacity-60" : "",
-                ].join(" ")}
-              >
-                {busy
-                  ? "Sending..."
-                  : cooldown > 0
-                  ? `Wait ${cooldown}s`
-                  : isAdminInviteFlow
-                  ? "Send Admin Code"
-                  : "Send Sign-In Code"}
-              </button>
-
-              {needsCode && (
-                <div className="mt-4 space-y-3 rounded-2xl border border-pink-200 bg-pink-50/55 p-4">
-                  <label className="block text-sm font-semibold text-gray-900">Email Code</label>
-                  <input
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    placeholder="Enter code from email"
-                    className="w-full rounded-2xl border border-pink-300 bg-white px-4 py-3 text-base text-gray-900 outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-200"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                  />
-                  <button
-                    type="button"
-                    onClick={verifyCode}
-                    disabled={busy}
-                    className={[
-                      "w-full rounded-2xl px-6 py-3.5 text-center text-base font-semibold text-white transition",
-                      "bg-gradient-to-r from-pink-500 via-fuchsia-500 to-pink-600 shadow-[0_14px_34px_rgba(236,72,153,0.32)] hover:scale-[1.01] hover:opacity-95",
-                      busy ? "cursor-not-allowed opacity-60" : "",
-                    ].join(" ")}
-                  >
-                    {busy ? "Verifying..." : "Verify Code & Sign In"}
-                  </button>
-                  <p className="text-xs text-pink-800/80">
-                    If the email link opens a browser, use this code instead.
-                  </p>
-                </div>
-              )}
 
               {msg && (
                 <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
