@@ -38,15 +38,14 @@ export default async function HomePage() {
       return ts >= nowMs;
     });
   } else {
-    // Use admin client for members so published events are always visible.
-    // Filter "upcoming" in app code to avoid DB timezone/format edge cases.
+    // Use admin client for members and avoid publish-flag edge cases.
+    // Members should always see upcoming events.
     const admin = createSupabaseAdmin();
-    const { data: publishedEvents } = await admin
+    const { data: allEvents } = await admin
       .from("events")
       .select("*")
-      .or("is_published.eq.true,is_published.is.null")
       .order("starts_at", { ascending: true });
-    eventRows = ((publishedEvents ?? []) as any[]).filter((ev: any) => {
+    eventRows = ((allEvents ?? []) as any[]).filter((ev: any) => {
       const ts = ev?.starts_at ? new Date(ev.starts_at).getTime() : Number.NaN;
       if (!Number.isFinite(ts)) return true;
       return ts >= nowMs;
