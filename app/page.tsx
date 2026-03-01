@@ -24,17 +24,20 @@ export default async function HomePage() {
 
   if (!profile?.full_name) redirect("/onboarding");
 
-  const nowIso = new Date().toISOString();
+  const nowMs = Date.now();
 
   let eventRows: any[] = [];
   if (profile.role === "admin") {
     const { data: events } = await supabase
       .from("events")
       .select("*")
-      .gte("starts_at", nowIso)
       .or("is_archived.is.null,is_archived.eq.false")
       .order("starts_at", { ascending: true });
-    eventRows = (events ?? []) as any[];
+    eventRows = ((events ?? []) as any[]).filter((ev: any) => {
+      const ts = ev?.starts_at ? new Date(ev.starts_at).getTime() : Number.NaN;
+      if (!Number.isFinite(ts)) return false;
+      return ts >= nowMs;
+    });
   } else {
     // Use admin client for members so published events are always visible.
     // Filter "upcoming" in app code to avoid DB timezone/format edge cases.
@@ -45,8 +48,6 @@ export default async function HomePage() {
       .eq("is_published", true)
       .or("is_archived.is.null,is_archived.eq.false")
       .order("starts_at", { ascending: true });
-
-    const nowMs = Date.now();
     eventRows = ((publishedEvents ?? []) as any[]).filter((ev: any) => {
       const ts = ev?.starts_at ? new Date(ev.starts_at).getTime() : Number.NaN;
       if (!Number.isFinite(ts)) return false;
