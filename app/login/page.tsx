@@ -9,11 +9,17 @@ type Mode = "member" | "admin";
 function isNativeRuntime() {
   if (typeof window === "undefined") return false;
 
+  let storedNative = false;
+  try {
+    storedNative = window.localStorage.getItem("iwsg_native_runtime") === "1";
+  } catch {}
+
   const capNative = !!(window as any).Capacitor?.isNativePlatform?.();
+  const capPlatform = String((window as any).Capacitor?.getPlatform?.() ?? "").toLowerCase();
   const ua = typeof navigator !== "undefined" ? navigator.userAgent ?? "" : "";
   const uaNative = /\bCapacitor\b/i.test(ua) || /;\s*wv\)/i.test(ua);
 
-  return capNative || uaNative;
+  return storedNative || capNative || capPlatform === "android" || capPlatform === "ios" || uaNative;
 }
 
 export default function LoginPage() {

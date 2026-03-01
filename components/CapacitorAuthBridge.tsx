@@ -6,8 +6,15 @@ export default function CapacitorAuthBridge() {
   useEffect(() => {
     const cap = (window as any).Capacitor;
     const appPlugin = cap?.Plugins?.App;
+    const isNative = !!cap?.isNativePlatform?.();
 
-    if (!cap?.isNativePlatform?.() || !appPlugin?.addListener) return;
+    if (isNative) {
+      try {
+        window.localStorage.setItem("iwsg_native_runtime", "1");
+      } catch {}
+    }
+
+    if (!isNative || !appPlugin?.addListener) return;
 
     let sub: { remove: () => void } | null = null;
 
@@ -56,4 +63,3 @@ export default function CapacitorAuthBridge() {
 
   return null;
 }
-
