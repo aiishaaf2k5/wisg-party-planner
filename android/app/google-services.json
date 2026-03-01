@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "655793003237",
+    "project_id": "wisg-party-planner-59102",
+    "storage_bucket": "wisg-party-planner-59102.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:655793003237:android:9cdc2cc4b7e3d717d2920c",
+        "android_client_info": {
+          "package_name": "com.iwsg.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "655793003237-d8bt01mkn3r520mnbik60624mro5qkr8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.iwsg.app",
+            "certificate_hash": "b35ca6305ff9ba0c55c72df160bf56b7474c0624"
+          }
+        },
+        {
+          "client_id": "655793003237-cui84nop7c863btcjot15oq5fnacgi1s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCahKUfZH8mR3urr_WeONfkAqjIS6bgL8M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "655793003237-cui84nop7c863btcjot15oq5fnacgi1s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

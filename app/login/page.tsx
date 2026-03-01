@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
@@ -8,23 +8,11 @@ type Mode = "member" | "admin";
 
 function isNativeRuntime() {
   if (typeof window === "undefined") return false;
-
-  let storedNative = false;
-  try {
-    storedNative = window.localStorage.getItem("iwsg_native_runtime") === "1";
-  } catch {}
-
   const capNative = !!(window as any).Capacitor?.isNativePlatform?.();
-  const capPlatform = String((window as any).Capacitor?.getPlatform?.() ?? "").toLowerCase();
+  const capObj = !!(window as any).Capacitor;
   const ua = typeof navigator !== "undefined" ? navigator.userAgent ?? "" : "";
   const uaNative = /\bCapacitor\b/i.test(ua) || /;\s*wv\)/i.test(ua);
-
-  return storedNative || capNative || capPlatform === "android" || capPlatform === "ios" || uaNative;
-}
-
-function hasCapacitorBridge() {
-  if (typeof window === "undefined") return false;
-  return !!(window as any).Capacitor;
+  return capNative || capObj || uaNative;
 }
 
 export default function LoginPage() {
@@ -32,13 +20,21 @@ export default function LoginPage() {
 
   const [safeNext, setSafeNext] = useState("/");
   const [isAdminInviteFlow, setIsAdminInviteFlow] = useState(false);
-
+  const [isNativeApp, setIsNativeApp] = useState(false);
   const [mode, setMode] = useState<Mode>("member");
+
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [sentCode, setSentCode] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
   useEffect(() => {
+    setIsNativeApp(isNativeRuntime());
+
     const rawNext =
       typeof window !== "undefined"
         ? (new URLSearchParams(window.location.search).get("next") ?? "").trim()
@@ -50,118 +46,102 @@ export default function LoginPage() {
     const next = rawNext.startsWith("/") ? rawNext : "/";
     setSafeNext(next);
     setIsAdminInviteFlow(next.startsWith("/admin-invite"));
-    if (rawError) {
-      setErr(decodeURIComponent(rawError));
-    }
+    if (rawError) setErr(decodeURIComponent(rawError));
   }, []);
 
   useEffect(() => {
     if (isAdminInviteFlow) setMode("admin");
   }, [isAdminInviteFlow]);
 
-  async function continueWithGoogle() {
-    setErr(null);
-    setMsg(null);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => c - 1), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
-    if (busy) return;
-    setBusy(true);
-
+  async function checkRoleForEmail(targetEmail: string) {
     const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
     const inviteToken =
       typeof window !== "undefined" && isAdminInviteFlow
         ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
         : "";
-    const hasCap = hasCapacitorBridge();
 
-    const isNativeApp = isNativeRuntime();
+    const roleCheckRes = await fetch("/api/auth/login-role-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: targetEmail, mode: selectedMode, inviteToken }),
+    });
+    const roleCheckJson = await roleCheckRes.json().catch(() => ({}));
+    if (!roleCheckRes.ok) {
+      throw new Error(roleCheckJson?.error ?? "Please use the correct login type for this account.");
+    }
+  }
 
-    // Always try native Google first (works inside Capacitor app).
-    // On native, do NOT fall back to browser OAuth because it causes a loop.
+  async function sendCode() {
+    setErr(null);
+    setMsg(null);
+
+    const clean = email.trim().toLowerCase();
+    if (!clean) {
+      setErr("Please enter your email.");
+      return;
+    }
+    if (busy || cooldown > 0) return;
+
     try {
-      const { FirebaseAuthentication } = await import("@capacitor-firebase/authentication");
-      const nativeResult = await FirebaseAuthentication.signInWithGoogle();
-
-      const nativeEmail = String(nativeResult.user?.email ?? "").trim().toLowerCase();
-      if (!nativeEmail) {
-        setBusy(false);
-        setErr("Google sign-in did not return an email.");
-        return;
-      }
-
-      const roleCheckRes = await fetch("/api/auth/login-role-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: nativeEmail, mode: selectedMode, inviteToken }),
-      });
-      const roleCheckJson = await roleCheckRes.json().catch(() => ({}));
-      if (!roleCheckRes.ok) {
-        setBusy(false);
-        setErr(roleCheckJson?.error ?? "Please use the correct login type for this account.");
-        return;
-      }
-
-      let idToken = String(nativeResult.credential?.idToken ?? "").trim();
-      if (!idToken) {
-        const idRes = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
-        idToken = String(idRes?.token ?? "").trim();
-      }
-      if (!idToken) {
-        setBusy(false);
-        setErr("Google sign-in did not return an ID token.");
-        return;
-      }
-
-      const { error: supabaseErr } = await supabase.auth.signInWithIdToken({
-        provider: "google",
-        token: idToken,
-      });
-
-      setBusy(false);
-
-      if (supabaseErr) {
-        setErr(supabaseErr.message);
-        return;
-      }
-
-      window.location.href = safeNext;
-      return;
+      await checkRoleForEmail(clean);
     } catch (e: any) {
-      if (hasCap || isNativeApp) {
-        setBusy(false);
-        setErr(
-          e?.message
-            ? `Native Google sign-in failed: ${e.message}`
-            : "Native Google sign-in failed. Check Firebase Android setup (SHA + google-services.json)."
-        );
-        return;
-      }
-      // Not in native runtime or native plugin unavailable; continue with web OAuth on web.
-    }
-
-    const callback =
-      typeof window !== "undefined"
-        ? isNativeApp
-          ? `${window.location.origin}/auth/native-bridge?next=${encodeURIComponent(
-              safeNext
-            )}&mode=${encodeURIComponent(selectedMode)}`
-          : `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-              safeNext
-            )}&mode=${encodeURIComponent(selectedMode)}`
-        : undefined;
-
-    if (!callback) {
-      setBusy(false);
-      setErr("Could not start Google sign-in.");
+      setErr(e?.message ?? "Could not validate account.");
       return;
     }
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: callback,
-      },
+    setBusy(true);
+    setCooldown(30);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: clean,
+      options: isNativeApp
+        ? {}
+        : {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`,
+          },
     });
 
+    setBusy(false);
+
+    if (error) {
+      setErr(error.message);
+      setCooldown(0);
+      return;
+    }
+
+    setSentCode(true);
+    setMsg("Code sent. Enter the 6-digit code from your email.");
+  }
+
+  async function verifyCode() {
+    setErr(null);
+    setMsg(null);
+
+    const clean = email.trim().toLowerCase();
+    const code = otpCode.trim();
+    if (!clean) return setErr("Enter your email first.");
+    if (code.length < 6) return setErr("Enter the code from your email.");
+    if (busy) return;
+
+    try {
+      await checkRoleForEmail(clean);
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not validate account.");
+      return;
+    }
+
+    setBusy(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: clean,
+      token: code,
+      type: "email",
+    });
     setBusy(false);
 
     if (error) {
@@ -169,9 +149,27 @@ export default function LoginPage() {
       return;
     }
 
-    if (isNativeApp) {
-      setMsg("Continue sign-in in the browser window, then return to the app.");
-    }
+    window.location.href = safeNext;
+  }
+
+  async function continueWithGoogleWeb() {
+    setErr(null);
+    setMsg(null);
+    if (busy) return;
+    setBusy(true);
+
+    const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
+    const callback = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+      safeNext
+    )}&mode=${encodeURIComponent(selectedMode)}`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callback },
+    });
+
+    setBusy(false);
+    if (error) setErr(error.message);
   }
 
   return (
@@ -184,30 +182,21 @@ export default function LoginPage() {
 
           <div className="relative p-8 md:p-10">
             <div className="mt-6 text-center">
-              <div className="inline-flex items-center justify-center gap-3">
-                <p
-                  className="text-6xl leading-none text-pink-700 md:text-7xl"
-                  style={{ fontFamily: '"Palatino Linotype", "Book Antiqua", Palatino, serif', fontStyle: "italic" }}
-                >
-                  Welcome
-                </p>
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-pink-100 text-pink-600 shadow-sm md:h-11 md:w-11">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true">
-                    <path d="M12 21s-6.716-4.332-9.193-8.12C.716 9.67 2.08 5.5 6.01 4.738c2.064-.4 4.02.34 5.19 1.972 1.17-1.633 3.126-2.372 5.19-1.972 3.93.762 5.294 4.931 3.203 8.142C18.716 16.668 12 21 12 21z" />
-                  </svg>
-                </span>
-              </div>
+              <p
+                className="text-6xl leading-none text-pink-700 md:text-7xl"
+                style={{ fontFamily: '"Palatino Linotype", "Book Antiqua", Palatino, serif', fontStyle: "italic" }}
+              >
+                Welcome
+              </p>
               <div className="mt-4 flex items-center justify-center gap-4">
-                <div className="rounded-2xl bg-transparent p-0">
-                  <Image
-                    src="/wisg-logo.png"
-                    alt="IWSG logo"
-                    width={104}
-                    height={104}
-                    className="h-24 w-24 object-contain md:h-28 md:w-28"
-                    priority
-                  />
-                </div>
+                <Image
+                  src="/wisg-logo.png"
+                  alt="IWSG logo"
+                  width={104}
+                  height={104}
+                  className="h-24 w-24 object-contain md:h-28 md:w-28"
+                  priority
+                />
                 <div className="text-left">
                   <h1 className="text-2xl font-semibold tracking-tight text-gray-900 md:text-3xl">
                     Intercultural Women&apos;s Support Group
@@ -216,12 +205,6 @@ export default function LoginPage() {
                 </div>
               </div>
             </div>
-
-            <p className="mt-4 text-center text-base text-pink-800/80">
-                {isAdminInviteFlow
-                  ? "Continue with Google to accept your admin invite."
-                  : "Continue with Google to access your events."}
-            </p>
 
             <div className="mt-7 rounded-full border border-pink-200 bg-white/85 px-3 py-3 shadow-[0_10px_30px_rgba(236,72,153,0.14)] ring-1 ring-pink-100">
               <div className="grid grid-cols-2 gap-2">
@@ -237,9 +220,8 @@ export default function LoginPage() {
                     isAdminInviteFlow ? "cursor-not-allowed opacity-50" : "",
                   ].join(" ")}
                 >
-                  Member Login
+                  Member
                 </button>
-
                 <button
                   type="button"
                   onClick={() => setMode("admin")}
@@ -250,60 +232,85 @@ export default function LoginPage() {
                       : "text-gray-800 hover:bg-pink-50/70",
                   ].join(" ")}
                 >
-                  Admin Login
+                  Admin
                 </button>
               </div>
-              {isAdminInviteFlow && (
-                <p className="mt-2 text-center text-xs font-medium text-pink-700">
-                  Admin invite flow: sign in as admin to continue.
-                </p>
-              )}
             </div>
 
             <div className="mt-8 rounded-3xl border border-pink-200 bg-white/90 p-6 shadow-[0_14px_36px_rgba(236,72,153,0.14)]">
-              <div className="text-center text-xl font-semibold text-gray-900">
-                {isAdminInviteFlow ? "Admin Sign-In" : mode === "member" ? "Member Sign-In" : "Admin Sign-In"}
-              </div>
-              <div className="mt-1 text-center text-sm text-gray-600">
-                {isAdminInviteFlow
-                  ? "Use the same Google account that received the admin invite."
-                  : mode === "member"
-                  ? "Members: continue using your Google account."
-                  : "Admins: continue using your admin Google account."}
-              </div>
-
-              <div className="mt-5 space-y-2">
-                <button
-                  type="button"
-                  onClick={continueWithGoogle}
-                  disabled={busy}
-                  className={[
-                    "w-full rounded-2xl border border-pink-300 bg-white px-6 py-3.5 text-center text-base font-semibold text-gray-900 transition",
-                    "hover:bg-pink-50/60",
-                    busy ? "cursor-not-allowed opacity-60" : "",
-                  ].join(" ")}
-                >
-                  Continue with Google
-                </button>
-              </div>
+              {isNativeApp ? (
+                <div className="space-y-4">
+                  <div className="text-center text-xl font-semibold text-gray-900">Sign In With Email Code</div>
+                  <div className="text-center text-sm text-gray-600">
+                    Easy app login: enter email, then enter the code from email.
+                  </div>
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email address"
+                    className="w-full rounded-2xl border border-pink-300 bg-pink-50/70 px-4 py-3 text-base text-gray-900 outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-200"
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendCode}
+                    disabled={busy || cooldown > 0}
+                    className="w-full rounded-2xl bg-pink-600 px-6 py-4 text-base font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
+                  >
+                    {busy ? "Sending..." : cooldown > 0 ? `Wait ${cooldown}s` : "Send Code"}
+                  </button>
+                  {sentCode && (
+                    <>
+                      <input
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        placeholder="6-digit code"
+                        className="w-full rounded-2xl border border-pink-300 bg-white px-4 py-3 text-lg text-gray-900 outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-200"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                      />
+                      <button
+                        type="button"
+                        onClick={verifyCode}
+                        disabled={busy}
+                        className="w-full rounded-2xl bg-fuchsia-600 px-6 py-4 text-base font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
+                      >
+                        {busy ? "Verifying..." : "Verify & Sign In"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center text-xl font-semibold text-gray-900">Continue with Google</div>
+                  <div className="text-center text-sm text-gray-600">
+                    {isAdminInviteFlow
+                      ? "Use the same Google account that received the admin invite."
+                      : "Use your Google account to sign in quickly."}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={continueWithGoogleWeb}
+                    disabled={busy}
+                    className="w-full rounded-2xl border border-pink-300 bg-white px-6 py-3.5 text-center text-base font-semibold text-gray-900 transition hover:bg-pink-50/60 disabled:opacity-60"
+                  >
+                    Continue with Google
+                  </button>
+                </div>
+              )}
 
               {msg && (
                 <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                   {msg}
                 </div>
               )}
-
               {err && (
                 <div className="mt-4 rounded-2xl border border-pink-300 bg-pink-50 p-4 text-sm text-pink-800">
                   {err}
                 </div>
               )}
-
             </div>
-          </div>
-
-          <div className="border-t border-pink-100 bg-white/70 px-8 py-6 text-sm text-gray-600">
-            By signing in, you agree to use this for IWSG community events only.
           </div>
         </div>
       </div>
