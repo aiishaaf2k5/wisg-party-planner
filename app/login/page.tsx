@@ -62,6 +62,61 @@ export default function LoginPage() {
     setBusy(true);
 
     const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
+    const inviteToken =
+      typeof window !== "undefined" && isAdminInviteFlow
+        ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
+        : "";
+
+    // Always try native Google first (works inside Capacitor app).
+    // If not available (browser), we gracefully fall back to web OAuth.
+    try {
+      const { FirebaseAuthentication } = await import("@capacitor-firebase/authentication");
+      const nativeResult = await FirebaseAuthentication.signInWithGoogle();
+
+      const nativeEmail = String(nativeResult.user?.email ?? "").trim().toLowerCase();
+      if (!nativeEmail) {
+        setBusy(false);
+        setErr("Google sign-in did not return an email.");
+        return;
+      }
+
+      const roleCheckRes = await fetch("/api/auth/login-role-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: nativeEmail, mode: selectedMode, inviteToken }),
+      });
+      const roleCheckJson = await roleCheckRes.json().catch(() => ({}));
+      if (!roleCheckRes.ok) {
+        setBusy(false);
+        setErr(roleCheckJson?.error ?? "Please use the correct login type for this account.");
+        return;
+      }
+
+      const idToken = String(nativeResult.credential?.idToken ?? "").trim();
+      if (!idToken) {
+        setBusy(false);
+        setErr("Google sign-in did not return an ID token.");
+        return;
+      }
+
+      const { error: supabaseErr } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: idToken,
+      });
+
+      setBusy(false);
+
+      if (supabaseErr) {
+        setErr(supabaseErr.message);
+        return;
+      }
+
+      window.location.href = safeNext;
+      return;
+    } catch {
+      // Not in native runtime or native plugin unavailable; continue with web OAuth.
+    }
+
     const isNativeApp = isNativeRuntime();
 
     const callback =
