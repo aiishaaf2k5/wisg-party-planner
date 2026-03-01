@@ -6,6 +6,16 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type Mode = "member" | "admin";
 
+function isNativeRuntime() {
+  if (typeof window === "undefined") return false;
+
+  const capNative = !!(window as any).Capacitor?.isNativePlatform?.();
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent ?? "" : "";
+  const uaNative = /\bCapacitor\b/i.test(ua) || /;\s*wv\)/i.test(ua);
+
+  return capNative || uaNative;
+}
+
 export default function LoginPage() {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
 
@@ -46,9 +56,7 @@ export default function LoginPage() {
     setBusy(true);
 
     const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
-    const isNativeApp =
-      typeof window !== "undefined" &&
-      !!(window as any).Capacitor?.isNativePlatform?.();
+    const isNativeApp = isNativeRuntime();
 
     const callback =
       typeof window !== "undefined"
