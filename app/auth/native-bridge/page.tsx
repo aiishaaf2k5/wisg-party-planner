@@ -12,7 +12,30 @@ export default function NativeAuthBridgePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    let cancelled = false;
+
+    // First attempt: normal custom scheme deep-link.
     window.location.replace(customUrl);
+
+    // If browser blocks/ignores custom scheme, force Android intent fallback.
+    const t = window.setTimeout(() => {
+      if (cancelled) return;
+      window.location.replace(intentUrl);
+    }, 700);
+
+    const stop = () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+
+    document.addEventListener("visibilitychange", stop, { once: true });
+    window.addEventListener("pagehide", stop, { once: true });
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", stop);
+      window.removeEventListener("pagehide", stop);
+    };
   }, []);
 
   return (
