@@ -31,7 +31,6 @@ export default async function HomePage() {
     const { data: events } = await supabase
       .from("events")
       .select("*")
-      .or("is_archived.is.null,is_archived.eq.false")
       .order("starts_at", { ascending: true });
     eventRows = ((events ?? []) as any[]).filter((ev: any) => {
       const ts = ev?.starts_at ? new Date(ev.starts_at).getTime() : Number.NaN;
@@ -46,11 +45,10 @@ export default async function HomePage() {
       .from("events")
       .select("*")
       .eq("is_published", true)
-      .or("is_archived.is.null,is_archived.eq.false")
       .order("starts_at", { ascending: true });
     eventRows = ((publishedEvents ?? []) as any[]).filter((ev: any) => {
       const ts = ev?.starts_at ? new Date(ev.starts_at).getTime() : Number.NaN;
-      if (!Number.isFinite(ts)) return false;
+      if (!Number.isFinite(ts)) return true;
       return ts >= nowMs;
     });
   }
