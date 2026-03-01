@@ -18,6 +18,9 @@ export default function LoginPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
 
   useEffect(() => {
     const rawNext =
@@ -52,10 +55,14 @@ export default function LoginPage() {
     if (busy || cooldown > 0) return;
 
     const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
+    const inviteToken =
+      typeof window !== "undefined" && isAdminInviteFlow
+        ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
+        : "";
     const roleCheckRes = await fetch("/api/auth/login-role-check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: clean, mode: selectedMode }),
+      body: JSON.stringify({ email: clean, mode: selectedMode, inviteToken }),
     });
     const roleCheckJson = await roleCheckRes.json().catch(() => ({}));
     if (!roleCheckRes.ok) {
@@ -66,16 +73,19 @@ export default function LoginPage() {
     setBusy(true);
     setCooldown(30);
 
+    const isNativeApp =
+      typeof window !== "undefined" &&
+      !!(window as any).Capacitor?.isNativePlatform?.();
     const redirectTo =
-      typeof window !== "undefined"
+      !isNativeApp && typeof window !== "undefined"
         ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
         : undefined;
+    const otpOptions: { emailRedirectTo?: string } = {};
+    if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
 
     const { error } = await supabase.auth.signInWithOtp({
       email: clean,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
+      options: otpOptions,
     });
 
     setBusy(false);
@@ -86,11 +96,67 @@ export default function LoginPage() {
       return;
     }
 
+    setPendingEmail(clean);
+    setNeedsCode(true);
+    setOtpCode("");
     setMsg(
       isAdminInviteFlow
-        ? "Check your email and open the sign-in link to continue admin invite setup."
-        : "Check your email and open the sign-in link. If missing, check Spam or Junk."
+        ? "Email sent. Paste the one-time code from your email to continue admin setup."
+        : "Email sent. Paste the one-time code from your email to sign in."
     );
+  }
+
+  async function verifyCode() {
+    setErr(null);
+    setMsg(null);
+
+    const clean = pendingEmail.trim().toLowerCase();
+    if (!clean) {
+      setErr("Please enter your email first.");
+      return;
+    }
+
+    const code = otpCode.trim();
+    if (code.length < 6) {
+      setErr("Please enter the code from your email.");
+      return;
+    }
+
+    if (busy) return;
+
+    const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
+    const inviteToken =
+      typeof window !== "undefined" && isAdminInviteFlow
+        ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
+        : "";
+
+    const roleCheckRes = await fetch("/api/auth/login-role-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: clean, mode: selectedMode, inviteToken }),
+    });
+    const roleCheckJson = await roleCheckRes.json().catch(() => ({}));
+    if (!roleCheckRes.ok) {
+      setErr(roleCheckJson?.error ?? "Please use the correct login type for this account.");
+      return;
+    }
+
+    setBusy(true);
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: clean,
+      token: code,
+      type: "email",
+    });
+
+    setBusy(false);
+
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+
+    window.location.href = safeNext;
   }
 
   return (
@@ -221,6 +287,35 @@ export default function LoginPage() {
                   ? "Send Admin Sign-In Link"
                   : "Send Sign-In Link"}
               </button>
+
+              {needsCode && (
+                <div className="mt-4 space-y-3 rounded-2xl border border-pink-200 bg-pink-50/55 p-4">
+                  <label className="block text-sm font-semibold text-gray-900">Email Code</label>
+                  <input
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="Enter code from email"
+                    className="w-full rounded-2xl border border-pink-300 bg-white px-4 py-3 text-base text-gray-900 outline-none transition focus:border-pink-400 focus:ring-2 focus:ring-pink-200"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                  />
+                  <button
+                    type="button"
+                    onClick={verifyCode}
+                    disabled={busy}
+                    className={[
+                      "w-full rounded-2xl px-6 py-3.5 text-center text-base font-semibold text-white transition",
+                      "bg-gradient-to-r from-pink-500 via-fuchsia-500 to-pink-600 shadow-[0_14px_34px_rgba(236,72,153,0.32)] hover:scale-[1.01] hover:opacity-95",
+                      busy ? "cursor-not-allowed opacity-60" : "",
+                    ].join(" ")}
+                  >
+                    {busy ? "Verifying..." : "Verify Code & Sign In"}
+                  </button>
+                  <p className="text-xs text-pink-800/80">
+                    If the email link opens a browser, use this code instead.
+                  </p>
+                </div>
+              )}
 
               {msg && (
                 <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
