@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 export default function NativeAuthBridgePage() {
+  const search = typeof window !== "undefined" ? window.location.search || "" : "";
+  const customUrl = useMemo(() => `com.iwsg.app://auth/callback${search}`, [search]);
+  const intentUrl = useMemo(() => {
+    const qs = search ? search.slice(1) : "";
+    return `intent://auth/callback${qs ? `?${qs}` : ""}#Intent;scheme=com.iwsg.app;package=com.iwsg.app;end`;
+  }, [search]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const target = `com.iwsg.app://auth/callback${window.location.search || ""}`;
-    window.location.replace(target);
+    window.location.replace(customUrl);
   }, []);
 
   return (
@@ -17,18 +23,22 @@ export default function NativeAuthBridgePage() {
           If the app does not open automatically, tap the button below.
         </p>
         <a
-          href="#"
+          href={customUrl}
           onClick={(e) => {
             e.preventDefault();
-            const target = `com.iwsg.app://auth/callback${window.location.search || ""}`;
-            window.location.href = target;
+            window.location.href = customUrl;
           }}
           className="mt-6 inline-flex items-center justify-center rounded-2xl bg-pink-600 px-5 py-3 font-semibold text-white"
         >
           Open App
         </a>
+        <a
+          href={intentUrl}
+          className="mt-3 inline-flex items-center justify-center rounded-2xl border border-pink-300 bg-white px-5 py-3 font-semibold text-pink-700"
+        >
+          Open App (Android Fallback)
+        </a>
       </div>
     </div>
   );
 }
-
