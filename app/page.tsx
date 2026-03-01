@@ -36,16 +36,22 @@ export default async function HomePage() {
       .order("starts_at", { ascending: true });
     eventRows = (events ?? []) as any[];
   } else {
-    // Use admin client for members so published upcoming events are always visible.
+    // Use admin client for members so published events are always visible.
+    // Filter "upcoming" in app code to avoid DB timezone/format edge cases.
     const admin = createSupabaseAdmin();
     const { data: publishedEvents } = await admin
       .from("events")
       .select("*")
-      .gte("starts_at", nowIso)
       .eq("is_published", true)
       .or("is_archived.is.null,is_archived.eq.false")
       .order("starts_at", { ascending: true });
-    eventRows = (publishedEvents ?? []) as any[];
+
+    const nowMs = Date.now();
+    eventRows = ((publishedEvents ?? []) as any[]).filter((ev: any) => {
+      const ts = ev?.starts_at ? new Date(ev.starts_at).getTime() : Number.NaN;
+      if (!Number.isFinite(ts)) return false;
+      return ts >= nowMs;
+    });
   }
   const eventIds = eventRows.map((e: any) => e.id);
 
