@@ -102,6 +102,8 @@ export default function AdminEventEditor({
         location_text: locationText.trim(),
         dress_code: dressCode.trim() || null,
         note: note.trim() || null,
+        is_published: true,
+        is_archived: false,
       })
       .eq("id", event.id);
 

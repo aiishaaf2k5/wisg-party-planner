@@ -304,6 +304,8 @@ export default function NewEventPage() {
           location_text: locationText.trim(),
           dress_code: dressCode.trim() || null,
           note: note.trim() || null,
+          is_published: true,
+          is_archived: false,
         })
         .eq("id", draftEventId);
 
@@ -324,6 +326,8 @@ export default function NewEventPage() {
           note: note.trim() || null,
           flyer_template: "elegant",
           created_by: u.user.id,
+          is_published: true,
+          is_archived: false,
         })
         .select("*")
         .single();

@@ -44,7 +44,7 @@ export default async function HomePage() {
     const { data: publishedEvents } = await admin
       .from("events")
       .select("*")
-      .eq("is_published", true)
+      .or("is_published.eq.true,is_published.is.null")
       .order("starts_at", { ascending: true });
     eventRows = ((publishedEvents ?? []) as any[]).filter((ev: any) => {
       const ts = ev?.starts_at ? new Date(ev.starts_at).getTime() : Number.NaN;
