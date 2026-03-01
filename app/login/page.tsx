@@ -52,9 +52,13 @@ export default function LoginPage() {
 
     const callback =
       typeof window !== "undefined"
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-            safeNext
-          )}&mode=${encodeURIComponent(selectedMode)}`
+        ? isNativeApp
+          ? `com.iwsg.app://auth/callback?next=${encodeURIComponent(
+              safeNext
+            )}&mode=${encodeURIComponent(selectedMode)}`
+          : `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+              safeNext
+            )}&mode=${encodeURIComponent(selectedMode)}`
         : undefined;
 
     if (!callback) {
