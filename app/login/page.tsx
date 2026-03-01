@@ -27,9 +27,16 @@ export default function LoginPage() {
       typeof window !== "undefined"
         ? (new URLSearchParams(window.location.search).get("next") ?? "").trim()
         : "";
+    const rawError =
+      typeof window !== "undefined"
+        ? (new URLSearchParams(window.location.search).get("error") ?? "").trim()
+        : "";
     const next = rawNext.startsWith("/") ? rawNext : "/";
     setSafeNext(next);
     setIsAdminInviteFlow(next.startsWith("/admin-invite"));
+    if (rawError) {
+      setErr(decodeURIComponent(rawError));
+    }
   }, []);
 
   useEffect(() => {
@@ -104,6 +111,50 @@ export default function LoginPage() {
         ? "Email sent. Paste the one-time code from your email to continue admin setup."
         : "Email sent. Paste the one-time code from your email to sign in."
     );
+  }
+
+  async function continueWithGoogle() {
+    setErr(null);
+    setMsg(null);
+
+    if (busy) return;
+    setBusy(true);
+
+    const selectedMode: Mode = isAdminInviteFlow ? "admin" : mode;
+    const isNativeApp =
+      typeof window !== "undefined" &&
+      !!(window as any).Capacitor?.isNativePlatform?.();
+
+    const callback =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+            safeNext
+          )}&mode=${encodeURIComponent(selectedMode)}`
+        : undefined;
+
+    if (!callback) {
+      setBusy(false);
+      setErr("Could not start Google sign-in.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: callback,
+      },
+    });
+
+    setBusy(false);
+
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+
+    if (isNativeApp) {
+      setMsg("Continue sign-in in the browser window, then return to the app.");
+    }
   }
 
   async function verifyCode() {
@@ -256,6 +307,26 @@ export default function LoginPage() {
                   ? "Enter your email and we will send a secure sign-in code."
                   : "Admins: enter your admin email to get a sign-in code."}
               </div>
+
+              <div className="mt-5 space-y-2">
+                <button
+                  type="button"
+                  onClick={continueWithGoogle}
+                  disabled={busy}
+                  className={[
+                    "w-full rounded-2xl border border-pink-300 bg-white px-6 py-3.5 text-center text-base font-semibold text-gray-900 transition",
+                    "hover:bg-pink-50/60",
+                    busy ? "cursor-not-allowed opacity-60" : "",
+                  ].join(" ")}
+                >
+                  Continue with Google
+                </button>
+                <div className="text-center text-xs text-gray-600">
+                  Recommended to avoid email rate-limit issues.
+                </div>
+              </div>
+
+              <div className="mt-5 h-px w-full bg-pink-100" />
 
               <div className="mt-5 space-y-2">
                 <label className="text-sm font-semibold text-gray-900">Email</label>
