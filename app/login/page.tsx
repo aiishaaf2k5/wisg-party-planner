@@ -67,8 +67,10 @@ export default function LoginPage() {
         ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
         : "";
 
+    const isNativeApp = isNativeRuntime();
+
     // Always try native Google first (works inside Capacitor app).
-    // If not available (browser), we gracefully fall back to web OAuth.
+    // On native, do NOT fall back to browser OAuth because it causes a loop.
     try {
       const { FirebaseAuthentication } = await import("@capacitor-firebase/authentication");
       const nativeResult = await FirebaseAuthentication.signInWithGoogle();
@@ -117,11 +119,18 @@ export default function LoginPage() {
 
       window.location.href = safeNext;
       return;
-    } catch {
-      // Not in native runtime or native plugin unavailable; continue with web OAuth.
+    } catch (e: any) {
+      if (isNativeApp) {
+        setBusy(false);
+        setErr(
+          e?.message
+            ? `Native Google sign-in failed: ${e.message}`
+            : "Native Google sign-in failed. Check Firebase Android setup (SHA + google-services.json)."
+        );
+        return;
+      }
+      // Not in native runtime or native plugin unavailable; continue with web OAuth on web.
     }
-
-    const isNativeApp = isNativeRuntime();
 
     const callback =
       typeof window !== "undefined"
