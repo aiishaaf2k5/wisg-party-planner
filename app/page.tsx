@@ -26,31 +26,26 @@ export default async function HomePage() {
 
   const nowIso = new Date().toISOString();
 
-  let eventsQuery = supabase
-    .from("events")
-    .select("*")
-    .gte("starts_at", nowIso)
-     .or("is_archived.is.null,is_archived.eq.false")
-    .order("starts_at", { ascending: true });
-
-  if (profile.role !== "admin") {
-    eventsQuery = eventsQuery.eq("is_published", true);
-  }
-
-  const { data: events } = await eventsQuery;
-  let eventRows = events ?? [];
-
-  // RLS fallback: if member sees no published events, fetch published events via admin client.
-  if (profile.role !== "admin" && eventRows.length === 0) {
+  let eventRows: any[] = [];
+  if (profile.role === "admin") {
+    const { data: events } = await supabase
+      .from("events")
+      .select("*")
+      .gte("starts_at", nowIso)
+      .or("is_archived.is.null,is_archived.eq.false")
+      .order("starts_at", { ascending: true });
+    eventRows = (events ?? []) as any[];
+  } else {
+    // Use admin client for members so published upcoming events are always visible.
     const admin = createSupabaseAdmin();
-    const { data: fallbackEvents } = await admin
+    const { data: publishedEvents } = await admin
       .from("events")
       .select("*")
       .gte("starts_at", nowIso)
       .eq("is_published", true)
       .or("is_archived.is.null,is_archived.eq.false")
       .order("starts_at", { ascending: true });
-    eventRows = (fallbackEvents ?? []) as any[];
+    eventRows = (publishedEvents ?? []) as any[];
   }
   const eventIds = eventRows.map((e: any) => e.id);
 

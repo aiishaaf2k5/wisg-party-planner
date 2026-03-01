@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import MembersListClient from "@/components/MembersListClient";
 
 export const dynamic = "force-dynamic";
@@ -27,10 +28,12 @@ export default async function MembersPage() {
   if (!me?.full_name) redirect("/onboarding");
   if (me.is_banned) redirect("/");
 
-  const { data: rows } = await supabase
+  // Use admin client for stable visibility across all members (RLS-safe fallback behavior).
+  const admin = createSupabaseAdmin();
+  const { data: rows } = await admin
     .from("profiles")
     .select("id, full_name, role, is_banned")
-    .eq("is_banned", false)
+    .or("is_banned.is.null,is_banned.eq.false")
     .order("full_name", { ascending: true });
 
   const members = (rows ?? []) as MemberRow[];
