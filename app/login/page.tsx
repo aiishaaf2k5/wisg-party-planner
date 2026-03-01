@@ -22,6 +22,11 @@ function isNativeRuntime() {
   return storedNative || capNative || capPlatform === "android" || capPlatform === "ios" || uaNative;
 }
 
+function hasCapacitorBridge() {
+  if (typeof window === "undefined") return false;
+  return !!(window as any).Capacitor;
+}
+
 export default function LoginPage() {
   const supabase = useMemo(() => createSupabaseBrowser(), []);
 
@@ -66,6 +71,7 @@ export default function LoginPage() {
       typeof window !== "undefined" && isAdminInviteFlow
         ? new URL(safeNext, window.location.origin).searchParams.get("token") ?? ""
         : "";
+    const hasCap = hasCapacitorBridge();
 
     const isNativeApp = isNativeRuntime();
 
@@ -120,7 +126,7 @@ export default function LoginPage() {
       window.location.href = safeNext;
       return;
     } catch (e: any) {
-      if (isNativeApp) {
+      if (hasCap || isNativeApp) {
         setBusy(false);
         setErr(
           e?.message
